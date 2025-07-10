@@ -1,7 +1,6 @@
 import { getClientConfig } from "../config/client";
 import { SubmitKey } from "../store/config";
 import { LocaleType } from "./index";
-import { SAAS_CHAT_UTM_URL } from "@/app/constant";
 // if you are adding a new translation, please use PartialLocaleType instead of LocaleType
 
 const isApp = !!getClientConfig()?.isApp;
@@ -10,12 +9,10 @@ const en: LocaleType = {
   Error: {
     Unauthorized: isApp
       ? `😆 Oops, there's an issue. No worries:
-     \\ 1️⃣ New here? [Click to start chatting now 🚀](${SAAS_CHAT_UTM_URL})
-     \\ 2️⃣ Want to use your own OpenAI resources? [Click here](/#/settings) to change settings ⚙️`
+     \\ 1️⃣ Want to use your own API resources? [Click here](/#/settings) to change settings ⚙️`
       : `😆 Oops, there's an issue. Let's fix it:
-     \ 1️⃣ New here? [Click to start chatting now 🚀](${SAAS_CHAT_UTM_URL})
-     \ 2️⃣ Using a private setup? [Click here](/#/auth) to enter your key 🔑
-     \ 3️⃣ Want to use your own OpenAI resources? [Click here](/#/settings) to change settings ⚙️
+     \ 1️⃣ [Click here](/#/auth) to enter your key 🔑
+     \ 2️⃣ Want to use your own API resources? [Click here](/#/settings) to change settings ⚙️
      `,
   },
   Auth: {
@@ -26,9 +23,6 @@ const en: LocaleType = {
     Input: "access code",
     Confirm: "Confirm",
     Later: "Later",
-    SaasTips: "Too Complex, Use Immediately Now",
-    TopTips:
-      "🥳 NextChat AI launch promotion: Instantly unlock the latest models like OpenAI o1, GPT-4o, Claude-3.5!",
   },
   ChatItem: {
     ChatItemCount: (count: number) => `${count} messages`,
@@ -59,6 +53,8 @@ const en: LocaleType = {
       RefreshToast: "Title refresh request sent",
       Speech: "Play",
       StopSpeech: "Stop",
+      Fork: "Fork Chat",
+      ForkedToast: "Chat Forked"
     },
     Commands: {
       new: "Start a new chat",
@@ -90,8 +86,9 @@ const en: LocaleType = {
       if (submitKey === String(SubmitKey.Enter)) {
         inputHints += ", Shift + Enter to wrap";
       }
-      return inputHints + ", / to search prompts, : to use commands";
+      return inputHints;
     },
+    MobileInput: "Type a message...",
     Send: "Send",
     StartSpeak: "Start Speak",
     StopSpeak: "Stop Speak",
@@ -107,7 +104,10 @@ const en: LocaleType = {
       copyLastMessage: "Copy Last Reply",
       copyLastCode: "Copy Last Code Block",
       showShortcutKey: "Show Shortcuts",
-      clearContext: "Clear Context",
+    },
+    TokenInfo: {
+      TokenCount: (count: number) => `${count} Tokens`,
+      FirstDelay: (delay: number) => `First Response: ${delay}ms`,
     },
   },
   Export: {
@@ -181,7 +181,6 @@ const en: LocaleType = {
       Name: "Language", // ATTENTION: if you wanna add a new translation, please do not translate this value, leave it as `Language`
       All: "All Languages",
     },
-    Avatar: "Avatar",
     FontSize: {
       Title: "Font Size",
       SubTitle: "Adjust font size of chat content",
@@ -314,14 +313,6 @@ const en: LocaleType = {
       NoAccess: "Enter API Key to check balance",
     },
     Access: {
-      SaasStart: {
-        Title: "Use NextChat AI",
-        Label: " (Most Cost-Effective Option)",
-        SubTitle:
-          "Maintained by NextChat, zero setup needed, unlock OpenAI o1, GPT-4o," +
-          " Claude-3.5 and more",
-        ChatNow: "Start Now",
-      },
       AccessCode: {
         Title: "Access Code",
         SubTitle: "Access control Enabled",
@@ -447,17 +438,6 @@ const en: LocaleType = {
           SubTitle: "Example: ",
         },
       },
-      DeepSeek: {
-        ApiKey: {
-          Title: "DeepSeek API Key",
-          SubTitle: "Use a custom DeepSeek API Key",
-          Placeholder: "DeepSeek API Key",
-        },
-        Endpoint: {
-          Title: "Endpoint Address",
-          SubTitle: "Example: ",
-        },
-      },
       XAI: {
         ApiKey: {
           Title: "XAI API Key",
@@ -474,17 +454,6 @@ const en: LocaleType = {
           Title: "ChatGLM API Key",
           SubTitle: "Use a custom ChatGLM API Key",
           Placeholder: "ChatGLM API Key",
-        },
-        Endpoint: {
-          Title: "Endpoint Address",
-          SubTitle: "Example: ",
-        },
-      },
-      SiliconFlow: {
-        ApiKey: {
-          Title: "SiliconFlow API Key",
-          SubTitle: "Use a custom SiliconFlow API Key",
-          Placeholder: "SiliconFlow API Key",
         },
         Endpoint: {
           Title: "Endpoint Address",
@@ -521,6 +490,88 @@ const en: LocaleType = {
       CustomModel: {
         Title: "Custom Models",
         SubTitle: "Custom model options, seperated by comma",
+        ModelSelector: "Select Models",
+        FetchModels: "Load Models",
+        FetchSuccessFromClient: (count: number) =>
+          `Successfully fetched ${count} models from client configuration`,
+        FetchSuccessFromServer: (count: number) =>
+          `Successfully fetched ${count} models from server configuration`,
+        FetchFailedFromClient: (error: string) =>
+          `Failed to fetch models from client configuration: ${error}`,
+        FetchFailedFromServer: (error: string) =>
+          `Failed to fetch models from server configuration: ${error}`,
+        ApiKeyRequired: "Please set API key first",
+        InvalidResponse: "Invalid response format",
+        RequestFailed: (status: number) => `Request failed: ${status}`,
+        InputPlaceholder: "Enter custom model name and press Enter to add",
+        SelectAll: "Select All",
+        SelectNone: "Select None",
+        ModelExists: "Model already exists",
+        EditCategories: "Edit Model Categories",
+        CategoryName: "Category Name",
+        MatchKeyword: "Match Keyword",
+        AddCategory: "Add",
+        CategoryTip:
+          'Match keyword will be used to identify model categories, e.g. "gpt" will match all models containing "gpt"',
+        ExistingCategories: "Existing Custom Categories",
+        NoCustomCategories: "No custom categories yet",
+        InputPlaceholderEnter: "Enter custom model name and press Enter to add",
+        RefreshModels: "Refresh Models",
+        ModelNameLabel: "Model Name",
+        MatchRule: "Match Rule",
+        RestoreDefaults: "Restore Defaults",
+        DeleteConfirm: "Confirm to delete this model?",
+        AuthRequired: "Please enter access password in settings first",
+        SaveEditFailed: "Failed to update local storage",
+        DeleteModelSuccess: "Model deleted from local storage",
+        DeleteModelFailed: "Failed to update local storage",
+        ModelNotFound: "Model not found for deletion",
+        ModelNotFoundInList: "Model not found in complete model list",
+        EditModelNotFound: "Model not found for editing",
+        EditModelNotFoundInList:
+          "Model not found in complete model list for editing",
+        FetchFailed: "Failed to fetch model list",
+        RestoreRulesSuccess: "Default matching rules restored",
+        RestoreRulesFailed: "Failed to restore default matching rules",
+        MatchPrefix: "Match",
+        ModelCategory: "Model Category",
+        ModelCategoryOther: "Other",
+        TestModel: "Test Models",
+        Testing: "Testing...",
+        TestStart: "Starting to test {0} models...",
+        TestSuccess: "{0}: Test successful ({1}ms)",
+        TestFailed: "{0}: Test failed",
+        TestComplete: "Test complete: {0}/{1} models available",
+        TestError: "Test error: {0}",
+        SelectModelsToTest: "Please select models to test first",
+        Unavailable: "Unavailable",
+        NoModelsToTest: "No models to test currently",
+        TestButton: "Test",
+        TestTimeout: "Timeout",
+        TestUnavailable: "Failed",
+        TestButtonTooltip: "Click to test this model",
+        RetestButtonTooltip: "Click to retest this model",
+        TestStartMessage: "Starting to test model: {0}...",
+        TestSuccessMessage: "{0}: Test successful ({1}s)",
+        TestTimeoutMessage: "{0}: Timeout",
+        TestErrorMessage: "{0}: {1}",
+        TestErrorPrefix: "Test error: ",
+        ServerTestFailedError: "Server test failed: {0}",
+        UpdateStorageFailedError: "Failed to update local storage",
+        DefaultTestFailedMessage: "Test failed",
+        TestAllModelsStart: "Starting to test {0} models...",
+        StopTest: "Stop Testing",
+        TestAll: "Test All",
+        TestStopped: "Testing stopped",
+        TestCompleteMessage: "Test complete: {0}/{1} models available",
+        TimeoutOptions: {
+          FiveSeconds: "5s",
+          SixSeconds: "6s",
+          SevenSeconds: "7s",
+          EightSeconds: "8s",
+          NineSeconds: "9s",
+          TenSeconds: "10s",
+        },
       },
       Google: {
         ApiKey: {
@@ -541,17 +592,6 @@ const en: LocaleType = {
         GoogleSafetySettings: {
           Title: "Google Safety Settings",
           SubTitle: "Select a safety filtering level",
-        },
-      },
-      AI302: {
-        ApiKey: {
-          Title: "302.AI API Key",
-          SubTitle: "Use a custom 302.AI API Key",
-          Placeholder: "302.AI API Key",
-        },
-        Endpoint: {
-          Title: "Endpoint Address",
-          SubTitle: "Example: ",
         },
       },
     },
@@ -637,6 +677,30 @@ const en: LocaleType = {
         SubTitle: "Higher values result in more random responses",
       },
     },
+    EnableModelSearch: "Enable Model Search",
+    EnableModelSearchSubTitle:
+      "Enable to search and filter when selecting models",
+    EnableThemeChange: {
+      Title: "Enable Theme Switch",
+      SubTitle: "Show theme switch button in chat",
+    },
+    EnablePromptHints: {
+      Title: "Enable Prompt Hints Feature",
+      SubTitle:
+        "When enabled, you can trigger prompts with /, when disabled, the prompt feature will be completely turned off",
+    },
+    EnableClearContext: {
+      Title: "Enable Clear Context",
+      SubTitle: "Show clear context button in chat",
+    },
+    EnablePlugins: {
+      Title: "Enable Plugins",
+      SubTitle: "Show plugins button in chat",
+    },
+    EnableShortcuts: {
+      Title: "Enable Shortcuts",
+      SubTitle: "Show shortcuts button in chat",
+    },
   },
   Store: {
     DefaultTopic: "New Conversation",
@@ -671,6 +735,59 @@ const en: LocaleType = {
   },
   Mcp: {
     Name: "MCP",
+    Market: {
+      Title: "MCP Market",
+      SubTitle: (count: number) => `${count} servers configured`,
+      Loading: "Loading preset server list...",
+      NoServers: "No servers available",
+      SearchPlaceholder: "Search MCP Server",
+      Status: {
+        Active: "Running",
+        Paused: "Stopped",
+        Error: "Error",
+        Initializing: "Initializing",
+        Undefined: "Undefined",
+      },
+      Actions: {
+        Add: "Add",
+        Configure: "Configure",
+        Start: "Start",
+        Stop: "Stop",
+        Tools: "Tools",
+        RestartAll: "Restart All",
+      },
+      Operations: {
+        Starting: "Starting server...",
+        Stopping: "Stopping server...",
+        Updating: "Updating configuration...",
+        Creating: "Creating MCP client...",
+      },
+      ConfigModal: {
+        Title: "Configure Server - ",
+        Save: "Save",
+        Cancel: "Cancel",
+        InputPlaceholder: "Enter {0}",
+        AddItem: "Add {0}",
+      },
+      ToolsModal: {
+        Title: "Server Details - ",
+        Close: "Close",
+        NoTools: "No tools available",
+        Loading: "Loading...",
+      },
+      Errors: {
+        LoadFailed: "Failed to load preset servers",
+        InitFailed: "Failed to load initial state",
+        SaveFailed: "Failed to save configuration",
+        StartFailed: "Failed to start server, please check logs",
+        StopFailed: "Failed to stop server",
+        ToolsLoadFailed: "Failed to load tools",
+        ConfigUpdateSuccess: "Server configuration updated successfully",
+        StopSuccess: "Server stopped successfully",
+        RestartSuccess: "Restarting all clients",
+        RestartFailed: "Failed to restart clients",
+      },
+    },
   },
   FineTuned: {
     Sysmessage: "You are an assistant that",
@@ -691,7 +808,8 @@ const en: LocaleType = {
     },
   },
   Plugin: {
-    Name: "Plugin",
+    Name: "Plugins",
+    EnableWeb: "Enable Web Access",
     Page: {
       Title: "Plugins",
       SubTitle: (count: number) => `${count} plugins`,
@@ -789,6 +907,9 @@ const en: LocaleType = {
     More: "Find More",
     NotShow: "Never Show Again",
     ConfirmNoShow: "Confirm to disable？You can enable it in settings later.",
+    Thinking: "Thinking...",
+    Think: "Deep Thought",
+    ThinkingTime: (seconds: number) => ` (took ${seconds} seconds)`,
   },
 
   UI: {
@@ -801,6 +922,8 @@ const en: LocaleType = {
     Import: "Import",
     Sync: "Sync",
     Config: "Config",
+    Search: "Search",
+    All: "All",
   },
   Exporter: {
     Description: {
@@ -870,6 +993,6 @@ const en: LocaleType = {
     GenerateParams: "Generate Params",
     Detail: "Detail",
   },
-};
+} as const;
 
 export default en;

@@ -1,4 +1,4 @@
-import { ApiPath, Google } from "@/app/constant";
+import { ApiPath, Google, REQUEST_TIMEOUT_MS } from "@/app/constant";
 import {
   ChatOptions,
   getHeaders,
@@ -22,7 +22,6 @@ import {
   getMessageTextContent,
   getMessageImages,
   isVisionModel,
-  getTimeoutMSByModel,
 } from "@/app/utils";
 import { preProcessImageContent } from "@/app/utils/chat";
 import { nanoid } from "nanoid";
@@ -61,25 +60,23 @@ export class GeminiProApi implements LLMApi {
   extractMessage(res: any) {
     console.log("[Response] gemini-pro response: ", res);
 
-    const getTextFromParts = (parts: any[]) => {
-      if (!Array.isArray(parts)) return "";
-
-      return parts
-        .map((part) => part?.text || "")
-        .filter((text) => text.trim() !== "")
-        .join("\n\n");
-    };
-
-    let content = "";
+    // 处理数组形式的响应（多个块）
     if (Array.isArray(res)) {
-      res.map((item) => {
-        content += getTextFromParts(item?.candidates?.at(0)?.content?.parts);
-      });
+      // 合并所有文本块
+      let fullText = "";
+      for (const chunk of res) {
+        const textPart = chunk?.candidates?.at(0)?.content?.parts?.at(0)?.text;
+        if (textPart) {
+          fullText += textPart;
+        }
+      }
+      return fullText || "";
     }
 
+    // 处理单个响应对象
     return (
-      getTextFromParts(res?.candidates?.at(0)?.content?.parts) ||
-      content || //getTextFromParts(res?.at(0)?.candidates?.at(0)?.content?.parts) ||
+      res?.candidates?.at(0)?.content?.parts.at(0)?.text ||
+      res?.at(0)?.candidates?.at(0)?.content?.parts.at(0)?.text ||
       res?.error?.message ||
       ""
     );
@@ -92,12 +89,29 @@ export class GeminiProApi implements LLMApi {
     const apiClient = this;
     let multimodal = false;
 
+    // 添加联网状态日志
+    const session = useChatStore.getState().currentSession();
+    console.log(
+      "[Chat] Web Access:",
+      session.mask?.plugin?.includes("googleSearch") ? "Enabled" : "Disabled",
+    );
+
     // try get base64image from local cache image_url
     const _messages: ChatOptions["messages"] = [];
     for (const v of options.messages) {
       const content = await preProcessImageContent(v.content);
       _messages.push({ role: v.role, content });
     }
+
+    // 只有当用户选择了 googleSearch 时才创建 tools
+    const tools = session.mask?.plugin?.includes("googleSearch")
+      ? [
+          {
+            googleSearch: {},
+          },
+        ]
+      : undefined;
+
     const messages = _messages.map((v) => {
       let parts: any[] = [{ text: getMessageTextContent(v) }];
       if (isVisionModel(options.config.model)) {
@@ -152,14 +166,11 @@ export class GeminiProApi implements LLMApi {
     };
     const requestPayload = {
       contents: messages,
+      ...(tools ? { tools } : {}),
       generationConfig: {
-        // stopSequences: [
-        //   "Title"
-        // ],
         temperature: modelConfig.temperature,
         maxOutputTokens: modelConfig.max_tokens,
         topP: modelConfig.top_p,
-        // "topK": modelConfig.top_k,
       },
       safetySettings: [
         {
@@ -198,15 +209,14 @@ export class GeminiProApi implements LLMApi {
         headers: getHeaders(),
       };
 
-      const isThinking = options.config.model.includes("-thinking");
       // make a fetch request
       const requestTimeoutId = setTimeout(
         () => controller.abort(),
-        getTimeoutMSByModel(options.config.model),
+        REQUEST_TIMEOUT_MS,
       );
 
       if (shouldStream) {
-        const [tools, funcs] = usePluginStore
+        const [_, funcs] = usePluginStore
           .getState()
           .getAsTools(
             useChatStore.getState().currentSession().mask?.plugin || [],
@@ -215,11 +225,7 @@ export class GeminiProApi implements LLMApi {
           chatPath,
           requestPayload,
           getHeaders(),
-          // @ts-ignore
-          tools.length > 0
-            ? // @ts-ignore
-              [{ functionDeclarations: tools.map((tool) => tool.function) }]
-            : [],
+          tools || [], // 如果 tools 未定义，传入空数组
           funcs,
           controller,
           // parseSSE
@@ -227,6 +233,7 @@ export class GeminiProApi implements LLMApi {
             // console.log("parseSSE", text, runTools);
             const chunkJson = JSON.parse(text);
 
+            // 处理函数调用
             const functionCall = chunkJson?.candidates
               ?.at(0)
               ?.content.parts.at(0)?.functionCall;
@@ -241,10 +248,32 @@ export class GeminiProApi implements LLMApi {
                 },
               });
             }
-            return chunkJson?.candidates
-              ?.at(0)
-              ?.content.parts?.map((part: { text: string }) => part.text)
-              .join("\n\n");
+
+            // 处理图像数据
+            const part = chunkJson?.candidates?.at(0)?.content?.parts?.at(0);
+            if (part?.inlineData) {
+              // 检查是否有多个部分
+              const parts = chunkJson?.candidates?.at(0)?.content?.parts;
+              let textContent = "";
+
+              // 查找其他部分中的文本内容
+              if (parts && parts.length > 1) {
+                for (let i = 1; i < parts.length; i++) {
+                  if (parts[i].text) {
+                    textContent += parts[i].text;
+                  }
+                }
+              }
+
+              // 返回图像数据和文本内容
+              return JSON.stringify({
+                data: `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`,
+                type: "base64_image",
+                text: textContent,
+              });
+            }
+
+            return chunkJson?.candidates?.at(0)?.content.parts.at(0)?.text;
           },
           // processToolMessage, include tool_calls message and tool call results
           (

@@ -8,7 +8,7 @@ import {
 import { prettyObject } from "@/app/utils/format";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth";
-import { isModelNotavailableInServer } from "@/app/utils/model";
+import { isModelAvailableInServer } from "@/app/utils/model";
 // iflytek
 
 const serverConfig = getServerSideConfig();
@@ -89,7 +89,7 @@ async function request(req: NextRequest) {
 
       // not undefined and is false
       if (
-        isModelNotavailableInServer(
+        isModelAvailableInServer(
           serverConfig.customModels,
           jsonBody?.model as string,
           ServiceProvider.Iflytek as string,

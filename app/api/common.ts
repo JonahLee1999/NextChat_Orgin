@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSideConfig } from "../config/server";
 import { OPENAI_BASE_URL, ServiceProvider } from "../constant";
 import { cloudflareAIGatewayUrl } from "../utils/cloudflare";
-import { getModelProvider, isModelNotavailableInServer } from "../utils/model";
+import { getModelProvider, isModelAvailableInServer } from "../utils/model";
 
 const serverConfig = getServerSideConfig();
 
@@ -118,14 +118,15 @@ export async function requestOpenai(req: NextRequest) {
 
       // not undefined and is false
       if (
-        isModelNotavailableInServer(
+        isModelAvailableInServer(
           serverConfig.customModels,
           jsonBody?.model as string,
-          [
-            ServiceProvider.OpenAI,
-            ServiceProvider.Azure,
-            jsonBody?.model as string, // support provider-unspecified model
-          ],
+          ServiceProvider.OpenAI as string,
+        ) ||
+        isModelAvailableInServer(
+          serverConfig.customModels,
+          jsonBody?.model as string,
+          ServiceProvider.Azure as string,
         )
       ) {
         return NextResponse.json(

@@ -9,7 +9,6 @@ import CopyIcon from "../icons/copy.svg";
 import ClearIcon from "../icons/clear.svg";
 import LoadingIcon from "../icons/three-dots.svg";
 import EditIcon from "../icons/edit.svg";
-import FireIcon from "../icons/fire.svg";
 import EyeIcon from "../icons/eye.svg";
 import DownloadIcon from "../icons/download.svg";
 import UploadIcon from "../icons/upload.svg";
@@ -19,14 +18,12 @@ import ConfirmIcon from "../icons/confirm.svg";
 import ConnectionIcon from "../icons/connection.svg";
 import CloudSuccessIcon from "../icons/cloud-success.svg";
 import CloudFailIcon from "../icons/cloud-fail.svg";
-import { trackSettingsPageGuideToCPaymentClick } from "../utils/auth-settings-events";
 import {
   Input,
   List,
   ListItem,
   Modal,
   PasswordInput,
-  Popover,
   Select,
   showConfirm,
   showToast,
@@ -71,17 +68,12 @@ import {
   UPDATE_URL,
   Stability,
   Iflytek,
-  SAAS_CHAT_URL,
   ChatGLM,
-  DeepSeek,
-  SiliconFlow,
-  AI302,
 } from "../constant";
 import { Prompt, SearchService, usePromptStore } from "../store/prompt";
 import { ErrorBoundary } from "./error";
 import { InputRange } from "./input-range";
 import { useNavigate } from "react-router-dom";
-import { Avatar, AvatarPicker } from "./emoji";
 import { getClientConfig } from "../config/client";
 import { useSyncStore } from "../store/sync";
 import { nanoid } from "nanoid";
@@ -89,6 +81,7 @@ import { useMaskStore } from "../store/mask";
 import { ProviderType } from "../utils/cloud";
 import { TTSConfigList } from "./tts-config";
 import { RealtimeConfigList } from "./realtime-chat/realtime-config";
+import { ModelSelectorModal } from "./model-selector-modal";
 
 function EditPromptModal(props: { id: string; onClose: () => void }) {
   const promptStore = usePromptStore();
@@ -581,6 +574,30 @@ function SyncItems() {
   );
 }
 
+// 添加一个函数来从服务端获取 CUSTOM_MODELS 环境变量
+function useServerCustomModels() {
+  const [serverCustomModels, setServerCustomModels] = useState("");
+  const config = useAppConfig();
+
+  useEffect(() => {
+    // 从服务端获取 CUSTOM_MODELS 环境变量
+    fetch("/api/config")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.customModels && !config.customModels) {
+          // 只有当客户端没有设置自定义模型时，才使用服务端的设置
+          config.update((config) => (config.customModels = data.customModels));
+          setServerCustomModels(data.customModels);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to fetch server custom models:", err);
+      });
+  }, []);
+
+  return serverCustomModels;
+}
+
 export function Settings() {
   const navigate = useNavigate();
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -689,31 +706,6 @@ export function Settings() {
           accessStore.update(
             (access) => (access.accessCode = e.currentTarget.value),
           );
-        }}
-      />
-    </ListItem>
-  );
-
-  const saasStartComponent = (
-    <ListItem
-      className={styles["subtitle-button"]}
-      title={
-        Locale.Settings.Access.SaasStart.Title +
-        `${Locale.Settings.Access.SaasStart.Label}`
-      }
-      subTitle={Locale.Settings.Access.SaasStart.SubTitle}
-    >
-      <IconButton
-        aria={
-          Locale.Settings.Access.SaasStart.Title +
-          Locale.Settings.Access.SaasStart.ChatNow
-        }
-        icon={<FireIcon />}
-        type={"primary"}
-        text={Locale.Settings.Access.SaasStart.ChatNow}
-        onClick={() => {
-          trackSettingsPageGuideToCPaymentClick();
-          window.location.href = SAAS_CHAT_URL;
         }}
       />
     </ListItem>
@@ -1200,47 +1192,6 @@ export function Settings() {
     </>
   );
 
-  const deepseekConfigComponent = accessStore.provider ===
-    ServiceProvider.DeepSeek && (
-    <>
-      <ListItem
-        title={Locale.Settings.Access.DeepSeek.Endpoint.Title}
-        subTitle={
-          Locale.Settings.Access.DeepSeek.Endpoint.SubTitle +
-          DeepSeek.ExampleEndpoint
-        }
-      >
-        <input
-          aria-label={Locale.Settings.Access.DeepSeek.Endpoint.Title}
-          type="text"
-          value={accessStore.deepseekUrl}
-          placeholder={DeepSeek.ExampleEndpoint}
-          onChange={(e) =>
-            accessStore.update(
-              (access) => (access.deepseekUrl = e.currentTarget.value),
-            )
-          }
-        ></input>
-      </ListItem>
-      <ListItem
-        title={Locale.Settings.Access.DeepSeek.ApiKey.Title}
-        subTitle={Locale.Settings.Access.DeepSeek.ApiKey.SubTitle}
-      >
-        <PasswordInput
-          aria-label={Locale.Settings.Access.DeepSeek.ApiKey.Title}
-          value={accessStore.deepseekApiKey}
-          type="text"
-          placeholder={Locale.Settings.Access.DeepSeek.ApiKey.Placeholder}
-          onChange={(e) => {
-            accessStore.update(
-              (access) => (access.deepseekApiKey = e.currentTarget.value),
-            );
-          }}
-        />
-      </ListItem>
-    </>
-  );
-
   const XAIConfigComponent = accessStore.provider === ServiceProvider.XAI && (
     <>
       <ListItem
@@ -1314,46 +1265,6 @@ export function Settings() {
           onChange={(e) => {
             accessStore.update(
               (access) => (access.chatglmApiKey = e.currentTarget.value),
-            );
-          }}
-        />
-      </ListItem>
-    </>
-  );
-  const siliconflowConfigComponent = accessStore.provider ===
-    ServiceProvider.SiliconFlow && (
-    <>
-      <ListItem
-        title={Locale.Settings.Access.SiliconFlow.Endpoint.Title}
-        subTitle={
-          Locale.Settings.Access.SiliconFlow.Endpoint.SubTitle +
-          SiliconFlow.ExampleEndpoint
-        }
-      >
-        <input
-          aria-label={Locale.Settings.Access.SiliconFlow.Endpoint.Title}
-          type="text"
-          value={accessStore.siliconflowUrl}
-          placeholder={SiliconFlow.ExampleEndpoint}
-          onChange={(e) =>
-            accessStore.update(
-              (access) => (access.siliconflowUrl = e.currentTarget.value),
-            )
-          }
-        ></input>
-      </ListItem>
-      <ListItem
-        title={Locale.Settings.Access.SiliconFlow.ApiKey.Title}
-        subTitle={Locale.Settings.Access.SiliconFlow.ApiKey.SubTitle}
-      >
-        <PasswordInput
-          aria-label={Locale.Settings.Access.SiliconFlow.ApiKey.Title}
-          value={accessStore.siliconflowApiKey}
-          type="text"
-          placeholder={Locale.Settings.Access.SiliconFlow.ApiKey.Placeholder}
-          onChange={(e) => {
-            accessStore.update(
-              (access) => (access.siliconflowApiKey = e.currentTarget.value),
             );
           }}
         />
@@ -1459,44 +1370,45 @@ export function Settings() {
     </>
   );
 
-  const ai302ConfigComponent = accessStore.provider === ServiceProvider["302.AI"] && (
-    <>
-      <ListItem
-          title={Locale.Settings.Access.AI302.Endpoint.Title}
-          subTitle={
-            Locale.Settings.Access.AI302.Endpoint.SubTitle +
-            AI302.ExampleEndpoint
+  // 获取服务端的自定义模型设置
+  const serverCustomModels = useServerCustomModels();
+
+  // 修改自定义模型输入框的处理逻辑
+  const [showModelSelector, setShowModelSelector] = useState(false);
+
+  const customModelsComponent = (
+    <ListItem
+      title={Locale.Settings.Access.CustomModel.Title}
+      subTitle={Locale.Settings.Access.CustomModel.SubTitle}
+      vertical={true}
+    >
+      <div className={styles["custom-model-container"]}>
+        <input
+          aria-label={Locale.Settings.Access.CustomModel.Title}
+          className={styles["custom-model-input"]}
+          type="text"
+          value={config.customModels}
+          placeholder={serverCustomModels || "model1,model2,model3"}
+          onChange={(e) =>
+            config.update(
+              (config) => (config.customModels = e.currentTarget.value),
+            )
           }
-        >
-          <input
-            aria-label={Locale.Settings.Access.AI302.Endpoint.Title}
-            type="text"
-            value={accessStore.ai302Url}
-            placeholder={AI302.ExampleEndpoint}
-            onChange={(e) =>
-              accessStore.update(
-                (access) => (access.ai302Url = e.currentTarget.value),
-              )
+        ></input>
+        <IconButton
+          icon={<ResetIcon />}
+          text={Locale.Settings.Access.CustomModel.FetchModels}
+          onClick={() => {
+            if (accessStore.isAuthorized()) {
+              setShowModelSelector(true);
+            } else {
+              showToast("请先在设置中输入访问密码");
             }
-          ></input>
-        </ListItem>
-        <ListItem
-          title={Locale.Settings.Access.AI302.ApiKey.Title}
-          subTitle={Locale.Settings.Access.AI302.ApiKey.SubTitle}
-        >
-          <PasswordInput
-            aria-label={Locale.Settings.Access.AI302.ApiKey.Title}
-            value={accessStore.ai302ApiKey}
-            type="text"
-            placeholder={Locale.Settings.Access.AI302.ApiKey.Placeholder}
-            onChange={(e) => {
-              accessStore.update(
-                (access) => (access.ai302ApiKey = e.currentTarget.value),
-              );
-            }}
-          />
-        </ListItem>
-      </>
+          }}
+          className={styles["custom-model-button"]}
+        />
+      </div>
+    </ListItem>
   );
 
   return (
@@ -1525,32 +1437,6 @@ export function Settings() {
       </div>
       <div className={styles["settings"]}>
         <List>
-          <ListItem title={Locale.Settings.Avatar}>
-            <Popover
-              onClose={() => setShowEmojiPicker(false)}
-              content={
-                <AvatarPicker
-                  onEmojiClick={(avatar: string) => {
-                    updateConfig((config) => (config.avatar = avatar));
-                    setShowEmojiPicker(false);
-                  }}
-                />
-              }
-              open={showEmojiPicker}
-            >
-              <div
-                aria-label={Locale.Settings.Avatar}
-                tabIndex={0}
-                className={styles.avatar}
-                onClick={() => {
-                  setShowEmojiPicker(!showEmojiPicker);
-                }}
-              >
-                <Avatar avatar={config.avatar} />
-              </div>
-            </Popover>
-          </ListItem>
-
           <ListItem
             title={Locale.Settings.Update.Version(currentVersion ?? "unknown")}
             subTitle={
@@ -1724,21 +1610,102 @@ export function Settings() {
               }
             ></input>
           </ListItem>
+
           <ListItem
             title={Locale.Mask.Config.CodeFold.Title}
             subTitle={Locale.Mask.Config.CodeFold.SubTitle}
           >
             <input
-              aria-label={Locale.Mask.Config.CodeFold.Title}
               type="checkbox"
               checked={config.enableCodeFold}
-              data-testid="enable-code-fold-checkbox"
               onChange={(e) =>
                 updateConfig(
                   (config) => (config.enableCodeFold = e.currentTarget.checked),
                 )
               }
-            ></input>
+            />
+          </ListItem>
+        </List>
+
+        <List>
+          <ListItem
+            title={Locale.Settings.EnableModelSearch}
+            subTitle={Locale.Settings.EnableModelSearchSubTitle}
+          >
+            <input
+              type="checkbox"
+              checked={config.enableModelSearch}
+              onChange={(e) =>
+                updateConfig(
+                  (config) =>
+                    (config.enableModelSearch = e.currentTarget.checked),
+                )
+              }
+            />
+          </ListItem>
+
+          <ListItem
+            title={Locale.Settings.EnableThemeChange.Title}
+            subTitle={Locale.Settings.EnableThemeChange.SubTitle}
+          >
+            <input
+              type="checkbox"
+              checked={config.enableThemeChange}
+              onChange={(e) =>
+                updateConfig(
+                  (config) =>
+                    (config.enableThemeChange = e.currentTarget.checked),
+                )
+              }
+            />
+          </ListItem>
+
+          <ListItem
+            title={Locale.Settings.EnablePromptHints.Title}
+            subTitle={Locale.Settings.EnablePromptHints.SubTitle}
+          >
+            <input
+              type="checkbox"
+              checked={config.enablePromptHints}
+              onChange={(e) =>
+                updateConfig(
+                  (config) =>
+                    (config.enablePromptHints = e.currentTarget.checked),
+                )
+              }
+            />
+          </ListItem>
+
+          <ListItem
+            title={Locale.Settings.EnableClearContext.Title}
+            subTitle={Locale.Settings.EnableClearContext.SubTitle}
+          >
+            <input
+              type="checkbox"
+              checked={config.enableClearContext}
+              onChange={(e) =>
+                updateConfig(
+                  (config) =>
+                    (config.enableClearContext = e.currentTarget.checked),
+                )
+              }
+            />
+          </ListItem>
+
+          <ListItem
+            title={Locale.Settings.EnableShortcuts.Title}
+            subTitle={Locale.Settings.EnableShortcuts.SubTitle}
+          >
+            <input
+              type="checkbox"
+              checked={config.enableShortcuts}
+              onChange={(e) =>
+                updateConfig(
+                  (config) =>
+                    (config.enableShortcuts = e.currentTarget.checked),
+                )
+              }
+            />
           </ListItem>
         </List>
 
@@ -1816,7 +1783,6 @@ export function Settings() {
         </List>
 
         <List id={SlotID.CustomModel}>
-          {saasStartComponent}
           {accessCodeComponent}
 
           {!accessStore.hideUserApiKey && (
@@ -1857,13 +1823,10 @@ export function Settings() {
                   {alibabaConfigComponent}
                   {tencentConfigComponent}
                   {moonshotConfigComponent}
-                  {deepseekConfigComponent}
                   {stabilityConfigComponent}
                   {lflytekConfigComponent}
                   {XAIConfigComponent}
                   {chatglmConfigComponent}
-                  {siliconflowConfigComponent}
-                  {ai302ConfigComponent}
                 </>
               )}
             </>
@@ -1895,24 +1858,7 @@ export function Settings() {
             </ListItem>
           ) : null}
 
-          <ListItem
-            title={Locale.Settings.Access.CustomModel.Title}
-            subTitle={Locale.Settings.Access.CustomModel.SubTitle}
-            vertical={true}
-          >
-            <input
-              aria-label={Locale.Settings.Access.CustomModel.Title}
-              style={{ width: "100%", maxWidth: "unset", textAlign: "left" }}
-              type="text"
-              value={config.customModels}
-              placeholder="model1,model2,model3"
-              onChange={(e) =>
-                config.update(
-                  (config) => (config.customModels = e.currentTarget.value),
-                )
-              }
-            ></input>
-          </ListItem>
+          {customModelsComponent}
         </List>
 
         <List>
@@ -1953,6 +1899,26 @@ export function Settings() {
         </List>
 
         <DangerItems />
+
+        {showModelSelector && (
+          <ModelSelectorModal
+            onClose={() => setShowModelSelector(false)}
+            currentModels={config.customModels}
+            onSelect={(selectedModels) => {
+              // 检查是否需要添加-all前缀
+              let finalModels = selectedModels;
+
+              // 如果选中的模型不为空，且不包含-all前缀，则添加
+              if (selectedModels && !selectedModels.includes("-all")) {
+                // 只要有选中的模型，就添加-all前缀
+                finalModels = "-all," + selectedModels;
+              }
+
+              // 更新配置
+              config.update((config) => (config.customModels = finalModels));
+            }}
+          />
+        )}
       </div>
     </ErrorBoundary>
   );

@@ -218,7 +218,7 @@ export function ModelConfigList(props: {
           aria-label={Locale.Settings.CompressThreshold.Title}
           type="number"
           min={500}
-          max={4000}
+          max={20000}
           value={props.modelConfig.compressMessageLengthThreshold}
           onChange={(e) =>
             props.updateConfig(
@@ -259,13 +259,15 @@ export function ModelConfigList(props: {
             });
           }}
         >
-          {allModels
-            .filter((v) => v.available)
-            .map((v, i) => (
-              <option value={`${v.name}@${v.provider?.providerName}`} key={i}>
-                {v.displayName}({v.provider?.providerName})
-              </option>
-            ))}
+          {Object.keys(groupModels).map((providerName, index) => (
+            <optgroup label={providerName} key={index}>
+              {groupModels[providerName].map((v, i) => (
+                <option value={`${v.name}@${v.provider?.providerName}`} key={i}>
+                  {v.displayName}
+                </option>
+              ))}
+            </optgroup>
+          ))}
         </Select>
       </ListItem>
     </>

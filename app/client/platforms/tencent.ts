@@ -1,5 +1,5 @@
 "use client";
-import { ApiPath, TENCENT_BASE_URL } from "@/app/constant";
+import { ApiPath, TENCENT_BASE_URL, REQUEST_TIMEOUT_MS } from "@/app/constant";
 import { useAccessStore, useAppConfig, useChatStore } from "@/app/store";
 
 import {
@@ -17,11 +17,7 @@ import {
 } from "@fortaine/fetch-event-source";
 import { prettyObject } from "@/app/utils/format";
 import { getClientConfig } from "@/app/config/client";
-import {
-  getMessageTextContent,
-  isVisionModel,
-  getTimeoutMSByModel,
-} from "@/app/utils";
+import { getMessageTextContent, isVisionModel } from "@/app/utils";
 import mapKeys from "lodash-es/mapKeys";
 import mapValues from "lodash-es/mapValues";
 import isArray from "lodash-es/isArray";
@@ -139,7 +135,7 @@ export class HunyuanApi implements LLMApi {
       // make a fetch request
       const requestTimeoutId = setTimeout(
         () => controller.abort(),
-        getTimeoutMSByModel(options.config.model),
+        REQUEST_TIMEOUT_MS,
       );
 
       if (shouldStream) {

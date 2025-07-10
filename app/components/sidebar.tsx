@@ -1,21 +1,22 @@
-import React, { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useMemo, useState, Fragment } from "react";
 
 import styles from "./home.module.scss";
 
 import { IconButton } from "./button";
 import SettingsIcon from "../icons/settings.svg";
 import GithubIcon from "../icons/github.svg";
-import ChatGptIcon from "../icons/chatgpt.svg";
 import AddIcon from "../icons/add.svg";
 import DeleteIcon from "../icons/delete.svg";
 import MaskIcon from "../icons/mask.svg";
-import McpIcon from "../icons/mcp.svg";
 import DragIcon from "../icons/drag.svg";
 import DiscoveryIcon from "../icons/discovery.svg";
+import NeatIcon from "../icons/neat.svg";
+import McpIcon from "../icons/mcp.svg";
+import LoadingIcon from "../icons/three-dots.svg";
 
 import Locale from "../locales";
 
-import { useAppConfig, useChatStore } from "../store";
+import { useAppConfig, useChatStore, useAccessStore } from "../store";
 
 import {
   DEFAULT_SIDEBAR_WIDTH,
@@ -23,25 +24,36 @@ import {
   MIN_SIDEBAR_WIDTH,
   NARROW_SIDEBAR_WIDTH,
   Path,
+  PLUGINS,
   REPO_URL,
 } from "../constant";
 
 import { Link, useNavigate } from "react-router-dom";
 import { isIOS, useMobileScreen } from "../utils";
 import dynamic from "next/dynamic";
-import { Selector, showConfirm } from "./ui-lib";
+import { showConfirm, SimpleSelector } from "./ui-lib";
 import clsx from "clsx";
-import { isMcpEnabled } from "../mcp/actions";
-
-const DISCOVERY = [
-  { name: Locale.Plugin.Name, path: Path.Plugins },
-  { name: "Stable Diffusion", path: Path.Sd },
-  { name: Locale.SearchChat.Page.Title, path: Path.SearchChat },
-];
+import { isMcpEnabled, initializeMcpSystem } from "../mcp/actions";
+import { getClientConfig } from "../config/client";
 
 const ChatList = dynamic(async () => (await import("./chat-list")).ChatList, {
   loading: () => null,
 });
+
+const McpMarketPage = dynamic(
+  async () => (await import("./mcp-market")).McpMarketPage,
+  {
+    loading: () => <Loading noLogo />,
+  },
+);
+
+function Loading(props: { noLogo?: boolean }) {
+  return (
+    <div className="loading-content">
+      <LoadingIcon />
+    </div>
+  );
+}
 
 export function useHotKey() {
   const chatStore = useChatStore();
@@ -135,7 +147,6 @@ export function useDragSideBar() {
     shouldNarrow,
   };
 }
-
 export function SideBarContainer(props: {
   children: React.ReactNode;
   onDragStart: (e: MouseEvent) => void;
@@ -186,7 +197,11 @@ export function SideBarHeader(props: {
         data-tauri-drag-region
       >
         <div className={styles["sidebar-title-container"]}>
-          <div className={styles["sidebar-title"]} data-tauri-drag-region>
+          <div
+            className={clsx(styles["sidebar-title"], "logo-text")}
+            data-tauri-drag-region
+            style={{ visibility: "visible" }}
+          >
             {title}
           </div>
           <div className={styles["sidebar-sub-title"]}>{subTitle}</div>
@@ -227,11 +242,30 @@ export function SideBarTail(props: {
 export function SideBar(props: { className?: string }) {
   useHotKey();
   const { onDragStart, shouldNarrow } = useDragSideBar();
-  const [showDiscoverySelector, setshowDiscoverySelector] = useState(false);
+  const [showPluginSelector, setShowPluginSelector] = useState(false);
   const navigate = useNavigate();
   const config = useAppConfig();
   const chatStore = useChatStore();
   const [mcpEnabled, setMcpEnabled] = useState(false);
+
+  useEffect(() => {
+    console.log("[Config] got config from build time", getClientConfig());
+    useAccessStore.getState().fetch();
+
+    const initMcp = async () => {
+      try {
+        const enabled = await isMcpEnabled();
+        if (enabled) {
+          console.log("[MCP] initializing...");
+          await initializeMcpSystem();
+          console.log("[MCP] initialized");
+        }
+      } catch (err) {
+        console.error("[MCP] failed to initialize:", err);
+      }
+    };
+    initMcp();
+  }, []);
 
   useEffect(() => {
     // 检查 MCP 是否启用
@@ -250,9 +284,9 @@ export function SideBar(props: { className?: string }) {
       {...props}
     >
       <SideBarHeader
-        title="NextChat"
-        subTitle="Build your own AI assistant."
-        logo={<ChatGptIcon />}
+        title="ChatGPT-New"
+        subTitle="rebuild after 2 years, things are better now"
+        logo={<NeatIcon width={44} height={44} />}
         shouldNarrow={shouldNarrow}
       >
         <div className={styles["sidebar-header-bar"]}>
@@ -284,21 +318,21 @@ export function SideBar(props: { className?: string }) {
             icon={<DiscoveryIcon />}
             text={shouldNarrow ? undefined : Locale.Discovery.Name}
             className={styles["sidebar-bar-button"]}
-            onClick={() => setshowDiscoverySelector(true)}
+            onClick={() => setShowPluginSelector(true)}
             shadow
           />
         </div>
-        {showDiscoverySelector && (
-          <Selector
+        {showPluginSelector && (
+          <SimpleSelector
             items={[
-              ...DISCOVERY.map((item) => {
+              ...PLUGINS.map((item) => {
                 return {
                   title: item.name,
                   value: item.path,
                 };
               }),
             ]}
-            onClose={() => setshowDiscoverySelector(false)}
+            onClose={() => setShowPluginSelector(false)}
             onSelection={(s) => {
               navigate(s[0], { state: { fromHome: true } });
             }}

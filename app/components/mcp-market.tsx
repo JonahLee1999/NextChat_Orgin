@@ -32,6 +32,8 @@ import clsx from "clsx";
 import PlayIcon from "../icons/play.svg";
 import StopIcon from "../icons/pause.svg";
 import { Path } from "../constant";
+import { useChatStore } from "../store/chat";
+import Locale, { getLang } from "../locales";
 
 interface ConfigProperty {
   type: string;
@@ -94,7 +96,11 @@ export function McpMarketPage() {
       if (!mcpEnabled) return;
       try {
         setLoadingPresets(true);
-        const response = await fetch("https://nextchat.club/mcp/list");
+        const lang = getLang(); // 获取当前语言
+        const localPath = lang === "cn" ? "/mcp_cn.json" : "/mcp.json";
+
+        const response = await fetch(localPath);
+
         if (!response.ok) {
           throw new Error("Failed to load preset servers");
         }
@@ -102,7 +108,7 @@ export function McpMarketPage() {
         setPresetServers(data?.data ?? []);
       } catch (error) {
         console.error("Failed to load preset servers:", error);
-        showToast("Failed to load preset servers");
+        showToast(Locale.Mcp.Market.Errors.LoadFailed);
       } finally {
         setLoadingPresets(false);
       }
@@ -124,7 +130,7 @@ export function McpMarketPage() {
         setClientStatuses(statuses);
       } catch (error) {
         console.error("Failed to load initial state:", error);
-        showToast("Failed to load initial state");
+        showToast(Locale.Mcp.Market.Errors.InitFailed);
       } finally {
         setIsLoading(false);
       }
@@ -215,7 +221,9 @@ export function McpMarketPage() {
 
       const newConfig = await addMcpServer(savingServerId, serverConfig);
       setConfig(newConfig);
-      showToast("Server configuration updated successfully");
+      // 重置MCP缓存
+      useChatStore.getState().resetMcpCache();
+      showToast(Locale.Mcp.Market.Errors.ConfigUpdateSuccess);
     } catch (error) {
       showToast(
         error instanceof Error ? error.message : "Failed to save configuration",
@@ -235,7 +243,7 @@ export function McpMarketPage() {
         throw new Error("Failed to load tools");
       }
     } catch (error) {
-      showToast("Failed to load tools");
+      showToast(Locale.Mcp.Market.Errors.ToolsLoadFailed);
       console.error(error);
       setTools(null);
     }
@@ -265,6 +273,8 @@ export function McpMarketPage() {
         };
         const newConfig = await addMcpServer(preset.id, serverConfig);
         setConfig(newConfig);
+        // 重置MCP缓存
+        useChatStore.getState().resetMcpCache();
 
         // 更新状态
         const statuses = await getClientsStatus();
@@ -285,9 +295,11 @@ export function McpMarketPage() {
       updateLoadingState(id, "Stopping server...");
       const newConfig = await pauseMcpServer(id);
       setConfig(newConfig);
-      showToast("Server stopped successfully");
+      // 重置MCP缓存
+      useChatStore.getState().resetMcpCache();
+      showToast(Locale.Mcp.Market.Errors.StopSuccess);
     } catch (error) {
-      showToast("Failed to stop server");
+      showToast(Locale.Mcp.Market.Errors.StopFailed);
       console.error(error);
     } finally {
       updateLoadingState(id, null);
@@ -299,6 +311,8 @@ export function McpMarketPage() {
     try {
       updateLoadingState(id, "Starting server...");
       await resumeMcpServer(id);
+      // 重置MCP缓存
+      useChatStore.getState().resetMcpCache();
     } catch (error) {
       showToast(
         error instanceof Error
@@ -317,9 +331,11 @@ export function McpMarketPage() {
       updateLoadingState("all", "Restarting all servers...");
       const newConfig = await restartAllClients();
       setConfig(newConfig);
-      showToast("Restarting all clients");
+      // 重置MCP缓存
+      useChatStore.getState().resetMcpCache();
+      showToast(Locale.Mcp.Market.Errors.RestartSuccess);
     } catch (error) {
-      showToast("Failed to restart clients");
+      showToast(Locale.Mcp.Market.Errors.RestartFailed);
       console.error(error);
     } finally {
       updateLoadingState("all", null);
@@ -374,7 +390,10 @@ export function McpMarketPage() {
                 )}
                 <IconButton
                   icon={<AddIcon />}
-                  text={addButtonText}
+                  text={Locale.Mcp.Market.ConfigModal.AddItem.replace(
+                    "{0}",
+                    itemLabel,
+                  )}
                   className={styles["add-button"]}
                   bordered
                   onClick={() => {
@@ -393,7 +412,10 @@ export function McpMarketPage() {
                 aria-label={key}
                 type="text"
                 value={currentValue}
-                placeholder={`Enter ${key}`}
+                placeholder={Locale.Mcp.Market.ConfigModal.InputPlaceholder.replace(
+                  "{0}",
+                  key,
+                )}
                 onChange={(e) => {
                   setUserConfig({ ...userConfig, [key]: e.target.value });
                 }}
@@ -415,7 +437,7 @@ export function McpMarketPage() {
 
     const statusMap = {
       undefined: null, // 未配置/未找到不显示
-      // 添加初始化状态
+      // 使用硬编码的状态文本
       initializing: (
         <span className={clsx(styles["server-status"], styles["initializing"])}>
           Initializing
@@ -452,7 +474,7 @@ export function McpMarketPage() {
       return (
         <div className={styles["loading-container"]}>
           <div className={styles["loading-text"]}>
-            Loading preset server list...
+            {Locale.Mcp.Market.Loading}
           </div>
         </div>
       );
@@ -461,7 +483,9 @@ export function McpMarketPage() {
     if (!Array.isArray(presetServers) || presetServers.length === 0) {
       return (
         <div className={styles["empty-container"]}>
-          <div className={styles["empty-text"]}>No servers available</div>
+          <div className={styles["empty-text"]}>
+            {Locale.Mcp.Market.NoServers}
+          </div>
         </div>
       );
     }
@@ -575,7 +599,7 @@ export function McpMarketPage() {
                   {server.configurable && (
                     <IconButton
                       icon={<EditIcon />}
-                      text="Configure"
+                      text={Locale.Mcp.Market.Actions.Configure}
                       onClick={() => setEditingServerId(server.id)}
                       disabled={isLoading}
                     />
@@ -584,7 +608,7 @@ export function McpMarketPage() {
                     <>
                       <IconButton
                         icon={<PlayIcon />}
-                        text="Start"
+                        text={Locale.Mcp.Market.Actions.Start}
                         onClick={() => restartServer(server.id)}
                         disabled={isLoading}
                       />
@@ -599,7 +623,7 @@ export function McpMarketPage() {
                     <>
                       <IconButton
                         icon={<EyeIcon />}
-                        text="Tools"
+                        text={Locale.Mcp.Market.Actions.Tools}
                         onClick={async () => {
                           setViewingServerId(server.id);
                           await loadTools(server.id);
@@ -611,7 +635,7 @@ export function McpMarketPage() {
                       />
                       <IconButton
                         icon={<StopIcon />}
-                        text="Stop"
+                        text={Locale.Mcp.Market.Actions.Stop}
                         onClick={() => pauseServer(server.id)}
                         disabled={isLoading}
                       />
@@ -621,7 +645,7 @@ export function McpMarketPage() {
               ) : (
                 <IconButton
                   icon={<AddIcon />}
-                  text="Add"
+                  text={Locale.Mcp.Market.Actions.Add}
                   onClick={() => addServer(server)}
                   disabled={isLoading}
                 />
@@ -632,13 +656,26 @@ export function McpMarketPage() {
       ));
   };
 
+  // 修改导航返回函数
+  const handleNavigateBack = async () => {
+    // 如果有配置变更，先重置缓存
+    if (config) {
+      useChatStore.getState().resetMcpCache();
+      // 预加载MCP系统提示
+      await useChatStore.getState().initMcp();
+    }
+
+    // 然后再导航回上一页
+    navigate(-1);
+  };
+
   return (
     <ErrorBoundary>
       <div className={styles["mcp-market-page"]}>
         <div className="window-header">
           <div className="window-header-title">
             <div className="window-header-main-title">
-              MCP Market
+              {Locale.Mcp.Market.Title}
               {loadingStates["all"] && (
                 <span className={styles["loading-indicator"]}>
                   {loadingStates["all"]}
@@ -646,7 +683,9 @@ export function McpMarketPage() {
               )}
             </div>
             <div className="window-header-sub-title">
-              {Object.keys(config?.mcpServers ?? {}).length} servers configured
+              {Locale.Mcp.Market.SubTitle(
+                Object.keys(config?.mcpServers ?? {}).length,
+              )}
             </div>
           </div>
 
@@ -656,7 +695,7 @@ export function McpMarketPage() {
                 icon={<RestartIcon />}
                 bordered
                 onClick={handleRestartAll}
-                text="Restart All"
+                text={Locale.Mcp.Market.Actions.RestartAll}
                 disabled={isLoading}
               />
             </div>
@@ -664,7 +703,7 @@ export function McpMarketPage() {
               <IconButton
                 icon={<CloseIcon />}
                 bordered
-                onClick={() => navigate(-1)}
+                onClick={handleNavigateBack}
                 disabled={isLoading}
               />
             </div>
@@ -676,7 +715,7 @@ export function McpMarketPage() {
             <input
               type="text"
               className={styles["search-bar"]}
-              placeholder={"Search MCP Server"}
+              placeholder={Locale.Mcp.Market.SearchPlaceholder}
               autoFocus
               onInput={(e) => setSearchText(e.currentTarget.value)}
             />
@@ -689,19 +728,19 @@ export function McpMarketPage() {
         {editingServerId && (
           <div className="modal-mask">
             <Modal
-              title={`Configure Server - ${editingServerId}`}
+              title={`${Locale.Mcp.Market.ConfigModal.Title}${editingServerId}`}
               onClose={() => !isLoading && setEditingServerId(undefined)}
               actions={[
                 <IconButton
                   key="cancel"
-                  text="Cancel"
+                  text={Locale.Mcp.Market.ConfigModal.Cancel}
                   onClick={() => setEditingServerId(undefined)}
                   bordered
                   disabled={isLoading}
                 />,
                 <IconButton
                   key="confirm"
-                  text="Save"
+                  text={Locale.Mcp.Market.ConfigModal.Save}
                   type="primary"
                   onClick={saveServerConfig}
                   bordered
@@ -717,12 +756,12 @@ export function McpMarketPage() {
         {viewingServerId && (
           <div className="modal-mask">
             <Modal
-              title={`Server Details - ${viewingServerId}`}
+              title={`${Locale.Mcp.Market.ToolsModal.Title}${viewingServerId}`}
               onClose={() => setViewingServerId(undefined)}
               actions={[
                 <IconButton
                   key="close"
-                  text="Close"
+                  text={Locale.Mcp.Market.ToolsModal.Close}
                   onClick={() => setViewingServerId(undefined)}
                   bordered
                 />,
@@ -730,7 +769,7 @@ export function McpMarketPage() {
             >
               <div className={styles["tools-list"]}>
                 {isLoading ? (
-                  <div>Loading...</div>
+                  <div>{Locale.Mcp.Market.ToolsModal.Loading}</div>
                 ) : tools?.tools ? (
                   tools.tools.map(
                     (tool: ListToolsResponse["tools"], index: number) => (
@@ -743,7 +782,7 @@ export function McpMarketPage() {
                     ),
                   )
                 ) : (
-                  <div>No tools available</div>
+                  <div>{Locale.Mcp.Market.ToolsModal.NoTools}</div>
                 )}
               </div>
             </Modal>

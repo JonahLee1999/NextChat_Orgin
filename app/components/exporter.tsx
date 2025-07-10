@@ -21,15 +21,13 @@ import {
 
 import CopyIcon from "../icons/copy.svg";
 import LoadingIcon from "../icons/three-dots.svg";
-import ChatGptIcon from "../icons/chatgpt.png";
 import ShareIcon from "../icons/share.svg";
+import NeatIcon from "../icons/neat.svg";
 
 import DownloadIcon from "../icons/download.svg";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MessageSelector, useMessageSelector } from "./message-selector";
-import { Avatar } from "./emoji";
 import dynamic from "next/dynamic";
-import NextImage from "next/image";
 
 import { toBlob, toPng } from "html-to-image";
 
@@ -38,8 +36,8 @@ import { EXPORT_MESSAGE_CLASS_NAME } from "../constant";
 import { getClientConfig } from "../config/client";
 import { type ClientApi, getClientApi } from "../client/api";
 import { getMessageTextContent } from "../utils";
-import { MaskAvatar } from "./mask";
 import clsx from "clsx";
+import { MaskAvatar } from "./mask";
 
 const Markdown = dynamic(async () => (await import("./markdown")).Markdown, {
   loading: () => <LoadingIcon />,
@@ -441,7 +439,7 @@ export function ImagePreviewer(props: {
     });
   };
 
-  const isMobile = useMobileScreen();
+  const isMobileScreen = useMobileScreen();
 
   const download = async () => {
     showToast(Locale.Export.Image.Toast);
@@ -454,7 +452,7 @@ export function ImagePreviewer(props: {
       const blob = await toPng(dom);
       if (!blob) return;
 
-      if (isMobile || (isApp && window.__TAURI__)) {
+      if (isMobileScreen || (isApp && window.__TAURI__)) {
         if (isApp && window.__TAURI__) {
           const result = await window.__TAURI__.dialog.save({
             defaultPath: `${props.topic}.png`,
@@ -506,7 +504,7 @@ export function ImagePreviewer(props: {
       <PreviewActions
         copy={copy}
         download={download}
-        showCopy={!isMobile}
+        showCopy={!isMobileScreen}
         messages={props.messages}
       />
       <div
@@ -515,26 +513,13 @@ export function ImagePreviewer(props: {
       >
         <div className={styles["chat-info"]}>
           <div className={clsx(styles["logo"], "no-dark")}>
-            <NextImage
-              src={ChatGptIcon.src}
-              alt="logo"
-              width={50}
-              height={50}
-            />
+            <NeatIcon width={50} height={50} />
           </div>
 
           <div>
-            <div className={styles["main-title"]}>NextChat</div>
+            <div className={styles["main-title"]}>NeatChat</div>
             <div className={styles["sub-title"]}>
-              github.com/ChatGPTNextWeb/ChatGPT-Next-Web
-            </div>
-            <div className={styles["icons"]}>
-              <MaskAvatar avatar={config.avatar} />
-              <span className={styles["icon-space"]}>&</span>
-              <MaskAvatar
-                avatar={mask.avatar}
-                model={session.mask.modelConfig.model}
-              />
+              github.com/tianzhentech/NeatChat
             </div>
           </div>
           <div>
@@ -563,11 +548,11 @@ export function ImagePreviewer(props: {
             >
               <div className={styles["avatar"]}>
                 {m.role === "user" ? (
-                  <Avatar avatar={config.avatar}></Avatar>
+                  <div className={styles["empty-avatar"]} />
                 ) : (
                   <MaskAvatar
-                    avatar={session.mask.avatar}
-                    model={m.model || session.mask.modelConfig.model}
+                    avatar={mask.avatar}
+                    model={m.model || mask.modelConfig.model}
                   />
                 )}
               </div>

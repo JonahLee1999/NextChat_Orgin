@@ -2,16 +2,9 @@ import { useEffect, useState } from "react";
 import { showToast } from "./components/ui-lib";
 import Locale from "./locales";
 import { RequestMessage } from "./client/api";
-import {
-  REQUEST_TIMEOUT_MS,
-  REQUEST_TIMEOUT_MS_FOR_THINKING,
-  ServiceProvider,
-} from "./constant";
 // import { fetch as tauriFetch, ResponseType } from "@tauri-apps/api/http";
 import { fetch as tauriStreamFetch } from "./utils/stream";
-import { VISION_MODEL_REGEXES, EXCLUDE_VISION_MODEL_REGEXES } from "./constant";
-import { useAccessStore } from "./store";
-import { ModelSize } from "./typing";
+import { ServiceProvider } from "./constant";
 
 export function trimTopic(topic: string) {
   // Fix an issue where double quotes still show in the Indonesian language
@@ -20,8 +13,8 @@ export function trimTopic(topic: string) {
   return (
     topic
       // fix for gemini
-      .replace(/^["“”*]+|["“”*]+$/g, "")
-      .replace(/[，。！？”“"、,.!?*]*$/, "")
+      .replace(/^["""*]+|["""*]+$/g, "")
+      .replace(/[，。！？""""、,.!?*]*$/, "")
   );
 }
 
@@ -247,7 +240,6 @@ export function getMessageTextContent(message: RequestMessage) {
 
 export function getMessageTextContentWithoutThinking(message: RequestMessage) {
   let content = "";
-
   if (typeof message.content === "string") {
     content = message.content;
   } else {
@@ -258,13 +250,9 @@ export function getMessageTextContentWithoutThinking(message: RequestMessage) {
       }
     }
   }
-
-  // Filter out thinking lines (starting with "> ")
-  return content
-    .split("\n")
-    .filter((line) => !line.startsWith("> ") && line.trim() !== "")
-    .join("\n")
-    .trim();
+  // 匹配以 <think> 开头，至闭合 </think>之间的内容，如果没有闭合，则匹配到结尾
+  const pattern = /^<think>[\s\S]*?(<\/think>|$)/;
+  return content.replace(pattern, "").trim(); // 直接移除匹配的部分
 }
 
 export function getMessageImages(message: RequestMessage): string[] {
@@ -281,14 +269,29 @@ export function getMessageImages(message: RequestMessage): string[] {
 }
 
 export function isVisionModel(model: string) {
-  const visionModels = useAccessStore.getState().visionModels;
-  const envVisionModels = visionModels?.split(",").map((m) => m.trim());
-  if (envVisionModels?.includes(model)) {
-    return true;
-  }
+  const modelLower = model.toLowerCase();
+  const excludeKeywords = ["claude-3-5-haiku-20241022"];
+  const visionKeywords = [
+    "vision",
+    "gpt-4o",
+    "claude-3",
+    "gemini",
+    "learnlm",
+    "vl",
+    "QVQ-72B-Preview",
+  ];
+  const isGpt4Turbo =
+    modelLower.includes("gpt-4-turbo") && !modelLower.includes("preview");
+
   return (
-    !EXCLUDE_VISION_MODEL_REGEXES.some((regex) => regex.test(model)) &&
-    VISION_MODEL_REGEXES.some((regex) => regex.test(model))
+    !excludeKeywords.some((keyword) =>
+      modelLower.includes(keyword.toLowerCase()),
+    ) &&
+    (visionKeywords.some((keyword) =>
+      modelLower.includes(keyword.toLowerCase()),
+    ) ||
+      isGpt4Turbo ||
+      isDalle3(modelLower))
   );
 }
 
@@ -296,57 +299,44 @@ export function isDalle3(model: string) {
   return "dall-e-3" === model;
 }
 
-export function getTimeoutMSByModel(model: string) {
-  model = model.toLowerCase();
-  if (
-    model.startsWith("dall-e") ||
-    model.startsWith("dalle") ||
-    model.startsWith("o1") ||
-    model.startsWith("o3") ||
-    model.includes("deepseek-r") ||
-    model.includes("-thinking")
-  )
-    return REQUEST_TIMEOUT_MS_FOR_THINKING;
-  return REQUEST_TIMEOUT_MS;
-}
-
-export function getModelSizes(model: string): ModelSize[] {
-  if (isDalle3(model)) {
-    return ["1024x1024", "1792x1024", "1024x1792"];
+export function showPlugins(providerName?: string, model?: string) {
+  // 始终允许gemini-2.0-flash-exp使用插件（联网功能）
+  if (model === "gemini-2.0-flash-exp") {
+    return true;
   }
-  if (model.toLowerCase().includes("cogview")) {
-    return [
-      "1024x1024",
-      "768x1344",
-      "864x1152",
-      "1344x768",
-      "1152x864",
-      "1440x720",
-      "720x1440",
-    ];
-  }
-  return [];
-}
 
-export function supportsCustomSize(model: string): boolean {
-  return getModelSizes(model).length > 0;
-}
+  // 恢复原来的功能，允许特定provider使用插件
+  if (!providerName || !model) return false;
 
-export function showPlugins(provider: ServiceProvider, model: string) {
+  const provider = providerName as ServiceProvider;
+
+  // 检查模型名称是否包含 deepseek-chat 或 deepseek-v3（不区分大小写）
   if (
-    provider == ServiceProvider.OpenAI ||
-    provider == ServiceProvider.Azure ||
-    provider == ServiceProvider.Moonshot ||
-    provider == ServiceProvider.ChatGLM
+    model.toLowerCase().includes("deepseek-chat") ||
+    model.toLowerCase().includes("deepseek-v3") ||
+    model.toLowerCase().includes("deepseek-r1") ||
+    model.toLowerCase().includes("deepseek-reasoner")
   ) {
     return true;
   }
-  if (provider == ServiceProvider.Anthropic && !model.includes("claude-2")) {
+
+  if (
+    provider === ServiceProvider.OpenAI ||
+    provider === ServiceProvider.Azure ||
+    provider === ServiceProvider.Moonshot ||
+    provider === ServiceProvider.ChatGLM
+  ) {
     return true;
   }
-  if (provider == ServiceProvider.Google && !model.includes("vision")) {
+
+  if (provider === ServiceProvider.Anthropic && !model.includes("claude-2")) {
     return true;
   }
+
+  if (provider === ServiceProvider.Google && !model.includes("vision")) {
+    return true;
+  }
+
   return false;
 }
 

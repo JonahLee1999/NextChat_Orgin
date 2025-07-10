@@ -1,5 +1,5 @@
 import { LLMModel } from "../client/api";
-import { DalleQuality, DalleStyle, ModelSize } from "../typing";
+import { DalleSize, DalleQuality, DalleStyle } from "../typing";
 import { getClientConfig } from "../config/client";
 import {
   DEFAULT_INPUT_TEMPLATE,
@@ -38,51 +38,94 @@ export enum Theme {
 
 const config = getClientConfig();
 
-export const DEFAULT_CONFIG = {
-  lastUpdate: Date.now(), // timestamp, to merge state
+export type ModelConfig = {
+  model: ModelType;
+  providerName: ServiceProvider;
+  temperature: number;
+  top_p: number;
+  max_tokens: number;
+  presence_penalty: number;
+  frequency_penalty: number;
+  sendMemory: boolean;
+  historyMessageCount: number;
+  compressMessageLengthThreshold: number;
+  compressModel: string;
+  compressProviderName: string;
+  enableInjectSystemPrompts: boolean;
+  template: string;
+  size: DalleSize;
+  quality: DalleQuality;
+  style: DalleStyle;
+};
 
+export type AppConfig = {
+  lastUpdate: number;
+  submitKey: SubmitKey;
+  avatar: string;
+  fontSize: number;
+  fontFamily: string;
+  theme: Theme;
+  tightBorder: boolean;
+  sendPreviewBubble: boolean;
+  enableAutoGenerateTitle: boolean;
+  sidebarWidth: number;
+  enableArtifacts: boolean;
+  enableCodeFold: boolean;
+  disablePromptHint: boolean;
+  dontShowMaskSplashScreen: boolean;
+  hideBuiltinMasks: boolean;
+  customModels: string;
+  models: LLMModel[];
+  modelConfig: ModelConfig;
+  ttsConfig: TTSConfig;
+  realtimeConfig: RealtimeConfig;
+  enableModelSearch: boolean;
+  enableThemeChange: boolean;
+  enablePromptHints: boolean;
+  enableClearContext: boolean;
+  enablePlugins: boolean;
+  enableShortcuts: boolean;
+};
+
+export const DEFAULT_CONFIG: AppConfig = {
+  lastUpdate: Date.now(),
   submitKey: SubmitKey.Enter,
   avatar: "1f603",
   fontSize: 14,
   fontFamily: "",
-  theme: Theme.Auto as Theme,
+  theme: Theme.Auto,
   tightBorder: !!config?.isApp,
   sendPreviewBubble: true,
   enableAutoGenerateTitle: true,
   sidebarWidth: DEFAULT_SIDEBAR_WIDTH,
-
-  enableArtifacts: true, // show artifacts config
-
-  enableCodeFold: true, // code fold config
-
+  enableArtifacts: true,
+  enableCodeFold: true,
   disablePromptHint: false,
-
-  dontShowMaskSplashScreen: false, // dont show splash screen when create chat
-  hideBuiltinMasks: false, // dont add builtin masks
-
+  dontShowMaskSplashScreen: true,
+  hideBuiltinMasks: false,
   customModels: "",
   models: DEFAULT_MODELS as any as LLMModel[],
-
   modelConfig: {
-    model: "gpt-4o-mini" as ModelType,
+    // To be honest, I don't understand why the setup of environment variables
+    // for a default model can't be implemented across so many versions.
+    model: "gpt-4o" as ModelType,
     providerName: "OpenAI" as ServiceProvider,
     temperature: 0.5,
     top_p: 1,
-    max_tokens: 4000,
+    max_tokens: 32767, // I don't even know how much 2^15 is, I must be a terrible programmer. :(
     presence_penalty: 0,
     frequency_penalty: 0,
-    sendMemory: true,
-    historyMessageCount: 4,
-    compressMessageLengthThreshold: 1000,
+    sendMemory: false,
+    historyMessageCount: 64,
+    compressMessageLengthThreshold: 8000,
     compressModel: "",
     compressProviderName: "",
-    enableInjectSystemPrompts: true,
+    enableInjectSystemPrompts: false,
     template: config?.template ?? DEFAULT_INPUT_TEMPLATE,
-    size: "1024x1024" as ModelSize,
+    size: "1024x1024" as DalleSize,
     quality: "standard" as DalleQuality,
     style: "vivid" as DalleStyle,
   },
-
   ttsConfig: {
     enable: false,
     autoplay: false,
@@ -91,7 +134,6 @@ export const DEFAULT_CONFIG = {
     voice: DEFAULT_TTS_VOICE,
     speed: 1.0,
   },
-
   realtimeConfig: {
     enable: false,
     provider: "OpenAI" as ServiceProvider,
@@ -104,13 +146,37 @@ export const DEFAULT_CONFIG = {
     temperature: 0.9,
     voice: "alloy" as Voice,
   },
+  enableModelSearch: false,
+  enableThemeChange: false,
+  enablePromptHints: false,
+  enableClearContext: true,
+  enablePlugins: false,
+  enableShortcuts: false,
 };
 
 export type ChatConfig = typeof DEFAULT_CONFIG;
 
-export type ModelConfig = ChatConfig["modelConfig"];
-export type TTSConfig = ChatConfig["ttsConfig"];
-export type RealtimeConfig = ChatConfig["realtimeConfig"];
+export type TTSConfig = {
+  enable: boolean;
+  autoplay: boolean;
+  engine: TTSEngineType;
+  model: TTSModelType;
+  voice: TTSVoiceType;
+  speed: number;
+};
+
+export type RealtimeConfig = {
+  enable: boolean;
+  provider: ServiceProvider;
+  model: string;
+  apiKey: string;
+  azure: {
+    endpoint: string;
+    deployment: string;
+  };
+  temperature: number;
+  voice: Voice;
+};
 
 export function limitNumber(
   x: number,
@@ -217,7 +283,7 @@ export const useAppConfig = createPersistStore(
       if (version < 3.4) {
         state.modelConfig.sendMemory = true;
         state.modelConfig.historyMessageCount = 4;
-        state.modelConfig.compressMessageLengthThreshold = 1000;
+        state.modelConfig.compressMessageLengthThreshold = 8000;
         state.modelConfig.frequency_penalty = 0;
         state.modelConfig.top_p = 1;
         state.modelConfig.template = DEFAULT_INPUT_TEMPLATE;
